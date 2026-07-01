@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CloudFormation stack provisioning EC2, S3, and Security Group
+  using AWS native IaC — demonstrates Infrastructure as Code with CloudFormation.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name used to tag resources
+
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    Description: EC2 instance type
+
+Resources:
+
+  # S3 Bucket
+  AppBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "app-bucket-${EnvironmentName}-cfn"
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Project
+          Value: cloudformation-aws-infra
+
+  # Security Group
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP and SSH access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Name
+          Value: !Sub "web-sg-${EnvironmentName}"
+
+  # EC2 Instance
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: ami-0c55b159cbfafe1f0
+      MinCount: 1
+      MaxCount: 1
+      SecurityGroups:
+        - !Ref WebServerSecurityGroup
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Name
+          Value: !Sub "web-server-${EnvironmentName}"
+
+Outputs:
+  BucketName:
+    Description: Name of the S3 bucket
+    Value: !Ref AppBucket
+
+  SecurityGroupId:
+    Description: Security Group ID
+    Value: !GetAtt WebServerSecurityGroup.GroupId
+
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref WebServerInstance
